@@ -5,7 +5,9 @@ window.addEventListener("DOMContentLoaded", () => {
   const box1 = document.querySelector("#box1") as HTMLDivElement;
   const box2 = document.querySelector("#box2") as HTMLDivElement;
 
-  const drag1 = new Draggabilly(box1);
+  const drag1 = new Draggabilly(box1, {
+    containment: document.body,
+  });
 
   let points: Position[] = [];
   let requestID: number;
