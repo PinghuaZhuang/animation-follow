@@ -1,5 +1,5 @@
 import Draggabilly, { Position } from "draggabilly";
-// import { debounce } from "lodash";
+import { debounce } from "lodash";
 // @ts-ignore
 // import TWEEN from "@tweenjs/tween.js";
 
@@ -16,23 +16,7 @@ window.addEventListener("DOMContentLoaded", () => {
   let points: Position[] = [];
   let requestID: number;
   let requestID2: number;
-  // let requestID3: number | null;
   let active = false;
-
-  const handler = () => {
-    if (!active) {
-      animate();
-    }
-  };
-
-  drag1.on("dragStart", () => {
-    recordPoints();
-    handler();
-  });
-  drag1.on("dragMove", handler);
-  drag1.on("dragEnd", () => {
-    requestAnimationFrame(() => cancelAnimationFrame(requestID2));
-  });
 
   function moveBox() {
     active = true;
@@ -41,9 +25,17 @@ window.addEventListener("DOMContentLoaded", () => {
     const activePoint = drag1.position;
     const rect = box2.getBoundingClientRect();
     const staicPoint = { x: rect.left, y: rect.top };
+
+    // 如果下一个位置靠的很近,就直接跳过
+    if (isNear(staicPoint, point)) {
+      points.shift();
+      return moveBox();
+    }
+
     const distance = getDistance(staicPoint, activePoint);
 
-    if (distance < OFFSET) {
+    // 如果当前位置里目标元素太近不移动
+    if (distance <= OFFSET) {
       return false;
     }
 
@@ -77,31 +69,55 @@ window.addEventListener("DOMContentLoaded", () => {
     // } while (i++ < length);
 
     points.shift();
-    setStyle(point);
-    return length;
+    setStyle(box2, point);
+    return true;
   }
 
   function animate() {
     if (!moveBox()) {
       active = false;
-      return cancelAnimationFrame(requestID);
+      return;
     }
-    moveBox();
     requestID = requestAnimationFrame(animate);
   }
+
+  const action = debounce(
+    () => {
+      if (active) return;
+      cancelAnimationFrame(requestID);
+      animate();
+    },
+    100,
+    {
+      maxWait: 100,
+    }
+  );
 
   function recordPoints() {
     points.push({ ...drag1.position });
     requestID2 = requestAnimationFrame(recordPoints);
   }
 
-  function setStyle(_point: Position) {
-    Object.assign(box2.style, {
-      left: `${_point.x}px`,
-      top: `${_point.y}px`,
-    });
-  }
+  const handler = () => {
+    action();
+  };
+
+  drag1.on("dragStart", () => {
+    recordPoints();
+    handler();
+  });
+  drag1.on("dragMove", handler);
+  drag1.on("dragEnd", () => {
+    requestAnimationFrame(() => cancelAnimationFrame(requestID2));
+  });
 });
+
+function setStyle(target: HTMLElement, _point: Position) {
+  Object.assign(target.style, {
+    left: `${_point.x}px`,
+    top: `${_point.y}px`,
+  });
+}
 
 function getDistance(point1: Position, point2: Position) {
   return Math.sqrt(
@@ -109,3 +125,13 @@ function getDistance(point1: Position, point2: Position) {
       Math.pow(Math.abs(point1.y - point2.y), 2)
   );
 }
+
+function isNear(point1: Position, point2: Position) {
+  return getDistance(point1, point2) < 1;
+}
+
+// function isEqualPoint(point1: Position, point2: Position) {
+//   return (
+//     Math.abs(point1.x - point2.x) <= 0.3 && Math.abs(point1.y - point2.y) <= 0.3
+//   );
+// }
